@@ -189,7 +189,7 @@
     const SUPABASE_URL = 'https://oosktyjqqcgjvtjxyony.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9vc2t0eWpxcWNnanZ0anh5b255Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzMjk3NjAsImV4cCI6MjA5MzkwNTc2MH0.Hc-7DC7vBJX8KjXpseZT56gf396GaMQQnxxwa9Be51c';
 
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     createApp({
       setup() {
@@ -203,7 +203,7 @@
           errorMsg.value = '';
 
           try {
-            const { data, error } = await supabase.auth.signInWithPassword({
+            const { data, error } = await supabaseClient.auth.signInWithPassword({
               email: email.value,
               password: password.value,
             });
