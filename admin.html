@@ -1613,7 +1613,7 @@
             }
             
             ElementPlus.ElMessage.success(`已删除工作表：${sheet}`);
-            loadData();
+            await loadData();
           } catch (err) {
             if (err !== 'cancel') ElementPlus.ElMessage.error('删除失败: ' + err.message);
           }
@@ -1740,15 +1740,24 @@
         const loadData = async () => {
           loading.value = true;
           try {
-            const { data, error } = await supabaseClient
+            // Supabase 默认每页最多 1000 条，循环分页拉取全部数据
+            let allData = [];
+            let from = 0;
+            const PAGE_SIZE = 1000;
+            while (true) {
+              const { data, error } = await supabaseClient
                 .from('production_records')
                 .select('*')
-                .order('entry_date', { ascending: false });
+                .order('entry_date', { ascending: false })
+                .range(from, from + PAGE_SIZE - 1);
+              if (error) throw error;
+              if (!data || data.length === 0) break;
+              allData = allData.concat(data);
+              if (data.length < PAGE_SIZE) break;
+              from += PAGE_SIZE;
+            }
 
-
-            if (error) throw error;
-
-            records.value = data || [];
+            records.value = allData;
             
             // 提取唯一工作表，按表名推断年月排序（与Excel顺序一致）
             const sheetSet = new Set();
@@ -1849,7 +1858,7 @@
               ElementPlus.ElMessage.success('添加成功');
             }
             dialogVisible.value = false;
-            loadData();
+            await loadData();
           } catch (err) {
             ElementPlus.ElMessage.error('保存失败: ' + err.message);
           }
@@ -1867,7 +1876,7 @@
             if (error) throw error;
             
             ElementPlus.ElMessage.success('删除成功');
-            loadData();
+            await loadData();
           } catch (err) {
             if (err !== 'cancel') ElementPlus.ElMessage.error('删除失败: ' + err.message);
           }
@@ -2024,7 +2033,6 @@
                     operator: normalizedRow['作业员'] || '',
                     defect_type: normalizedRow['不良类型'] || '',
                     notes: normalizedRow['备注'] || '',
-                    user_id: userId,
                   };
                 });
 
@@ -2179,7 +2187,7 @@
             if (error) throw error;
             
             ElementPlus.ElMessage.success('数据已清空');
-            loadData();
+            await loadData();
           } catch (err) {
             if (err !== 'cancel') ElementPlus.ElMessage.error('操作失败: ' + err.message);
           }
