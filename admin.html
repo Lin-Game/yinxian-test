@@ -658,25 +658,25 @@
               <el-button @click="handleImport">导入 Excel</el-button>
               <el-button @click="handleExport">导出 Excel</el-button>
               <!-- 日期范围选择器（仅全年表显示） -->
-              <span v-if="currentSheet === '全年表'" style="display:inline-flex; align-items:center; gap:6px; margin-left:12px;">
+              <div v-if="currentSheet === '全年表'" style="display:flex; align-items:center; gap:8px; margin-left:12px; flex-shrink:0;">
                 <el-date-picker
                   v-model="dateRangeStart"
                   type="month"
                   placeholder="开始月份"
                   format="YYYY.MM"
                   value-format="YYYY-MM"
-                  style="width:150px;"
+                  style="width:150px; flex-shrink:0;"
                 />
-                <span style="color:#999;">至</span>
+                <span style="color:#999; white-space:nowrap;">至</span>
                 <el-date-picker
                   v-model="dateRangeEnd"
                   type="month"
                   placeholder="结束月份"
                   format="YYYY.MM"
                   value-format="YYYY-MM"
-                  style="width:150px;"
+                  style="width:150px; flex-shrink:0;"
                 />
-              </span>
+              </div>
               <input
                 type="file"
                 ref="fileInput"
