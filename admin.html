@@ -8,6 +8,7 @@
   <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
   <link rel="stylesheet" href="https://unpkg.com/element-plus@2.4.4/dist/index.css" />
   <script src="https://unpkg.com/element-plus@2.4.4/dist/index.full.min.js"></script>
+  <script src="https://unpkg.com/element-plus@2.4.4/dist/locale/zh-cn.min.js"></script>
   <script src="https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://unpkg.com/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
@@ -254,6 +255,20 @@
       gap: 12px;
       margin-bottom: 20px;
       flex-wrap: wrap;
+    }
+    .date-range-picker {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-left: 12px;
+    }
+    /* 防止 daterange 面板星期表头换行，限制面板宽度 */
+    .el-date-range-picker th {
+      white-space: nowrap !important;
+    }
+    .el-date-range-picker {
+      width: 520px !important;
+      min-width: 520px !important;
     }
 
     /* ===== 表格区域 ===== */
@@ -522,6 +537,17 @@
       line-height: 36px !important;
       border-radius: 18px !important;
     }
+
+    /* ===== 对话框表单样式 ===== */
+    .el-form-item__label {
+      white-space: normal !important;
+      line-height: 1.4 !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: flex-end !important;
+      padding-top: 8px !important;
+      padding-bottom: 8px !important;
+    }
   </style>
 </head>
 <body>
@@ -625,16 +651,16 @@
                 <div class="stat-value">{{ stats.totalRecords }}</div>
               </div>
               <div class="stat-card" style="border-left-color: #48bb78;">
-                <div class="stat-label">平均良率 (%)</div>
-                <div class="stat-value">{{ stats.avgYield }}</div>
+                <div class="stat-label">良品数量</div>
+                <div class="stat-value">{{ stats.goodQty }}</div>
               </div>
               <div class="stat-card" style="border-left-color: #f6ad55;">
-                <div class="stat-label">总不良数</div>
-                <div class="stat-value">{{ stats.totalDefect }}</div>
+                <div class="stat-label">实际总数</div>
+                <div class="stat-value">{{ stats.actualTotal }}</div>
               </div>
               <div class="stat-card" style="border-left-color: #fc8181;">
-                <div class="stat-label">本月产量</div>
-                <div class="stat-value">{{ stats.monthlyYield }}</div>
+                <div class="stat-label">总直通率 (%)</div>
+                <div class="stat-value">{{ stats.passRate }}</div>
               </div>
             </div>
 
@@ -655,30 +681,33 @@
                 </template>
               </el-input>
               <el-button type="primary" @click="openAddDialog">新增记录</el-button>
-              <el-button @click="handleImport">导入 Excel</el-button>
-              <el-button @click="handleExport">导出 Excel</el-button>
+              <el-button @click="handleImport" v-show="currentSheet !== '全年表'">导入 Excel</el-button>
+              <el-button @click="handleExportCurrent">导出当前</el-button>
+              <el-button @click="handleExport" v-show="currentSheet !== '全年表'">导出全部</el-button>
               <!-- 日期范围选择器（仅全年表显示） -->
-              <template v-if="currentSheet === '全年表'">
-                <span style="display:inline-flex; align-items:center; gap:8px; margin-left:12px;">
-                  <el-date-picker
-                    v-model="dateRangeStart"
-                    type="month"
-                    placeholder="开始月份"
-                    format="YYYY.MM"
-                    value-format="YYYY-MM"
-                    style="width:150px;"
-                  />
-                  <span style="color:#999;">至</span>
-                  <el-date-picker
-                    v-model="dateRangeEnd"
-                    type="month"
-                    placeholder="结束月份"
-                    format="YYYY.MM"
-                    value-format="YYYY-MM"
-                    style="width:150px;"
-                  />
-                </span>
-              </template>
+              <div v-show="currentSheet === '全年表'" class="date-range-picker">
+                <el-date-picker
+                  v-model="dateRange"
+                  type="daterange"
+                  placeholder="选择日期范围"
+                  format="YYYY-MM-DD"
+                  value-format="YYYY-MM-DD"
+                  :shortcuts="dateRangeShortcuts"
+                  style="width:320px;"
+                />
+              </div>
+              <!-- 高级筛选按钮（仅全年表显示） -->
+              <el-button
+                v-show="currentSheet === '全年表'"
+                @click="openFilterDialog"
+                :type="hasActiveFilter ? 'primary' : 'default'"
+                style="margin-left:8px;"
+              >高级筛选</el-button>
+              <el-button
+                v-show="currentSheet === '全年表' && hasActiveFilter"
+                @click="clearFilter"
+                style="margin-left:4px;"
+              >清除筛选</el-button>
               <input
                 type="file"
                 ref="fileInput"
@@ -687,6 +716,60 @@
                 @change="onFileChange"
               />
             </div>
+
+            <!-- 高级筛选对话框（仅全年表使用） -->
+            <el-dialog
+              v-model="showFilterDialog"
+              title="高级筛选"
+              width="520px"
+              :close-on-click-modal="false"
+            >
+              <el-form :model="filterForm" label-width="80px">
+                <el-form-item label="日期范围">
+                  <el-date-picker
+                    v-model="filterForm.dateRange"
+                    type="daterange"
+                    placeholder="选择日期范围"
+                    format="YYYY-MM-DD"
+                    value-format="YYYY-MM-DD"
+                    :shortcuts="dateRangeShortcuts"
+                    style="width:100%;"
+                  />
+                </el-form-item>
+                <el-form-item label="周期">
+                  <el-input v-model="filterForm.cycle" placeholder="请输入周期（模糊匹配）" clearable />
+                </el-form-item>
+                <el-form-item label="批号">
+                  <el-input v-model="filterForm.batchNo" placeholder="请输入批号（模糊匹配）" clearable />
+                </el-form-item>
+                <el-form-item label="规格">
+                  <el-input v-model="filterForm.spec" placeholder="请输入规格（模糊匹配）" clearable />
+                </el-form-item>
+                <el-form-item label="尺寸">
+                  <el-input v-model="filterForm.size" placeholder="请输入尺寸（模糊匹配）" clearable />
+                </el-form-item>
+                <el-form-item label="物料代码">
+                  <el-input v-model="filterForm.materialCode" placeholder="请输入物料代码（模糊匹配）" clearable />
+                </el-form-item>
+                <el-form-item label="正箔电压">
+                  <el-input v-model="filterForm.foilVoltage" placeholder="请输入正箔电压（模糊匹配）" clearable />
+                </el-form-item>
+                <el-form-item label="作业员">
+                  <el-input v-model="filterForm.operator" placeholder="请输入作业员（模糊匹配）" clearable />
+                </el-form-item>
+                <el-form-item label="不良类型">
+                  <el-input v-model="filterForm.defectType" placeholder="请输入不良类型（模糊匹配）" clearable />
+                </el-form-item>
+                <el-form-item label="备注">
+                  <el-input v-model="filterForm.notes" placeholder="请输入备注（模糊匹配）" clearable />
+                </el-form-item>
+              </el-form>
+              <template #footer>
+                <el-button @click="filterFormReset">重置</el-button>
+                <el-button @click="showFilterDialog = false">取消</el-button>
+                <el-button type="primary" @click="confirmFilter">确定</el-button>
+              </template>
+            </el-dialog>
 
             <!-- 工作表标签 -->
             <div class="sheet-tabs">
@@ -749,7 +832,8 @@
                     </tr>
                   </thead>
                   <tbody>
-                    <tr v-for="row in paginatedData" :key="row.id">
+                    <tr v-for="row in paginatedData" :key="row.id" @dblclick="openEditDialog(row)" style="cursor:pointer" title="双击编辑">
+
                       <td>{{ row.entry_date }}</td>
                       <td>{{ row.cycle }}</td>
                       <td>{{ row.batch_no }}</td>
@@ -804,16 +888,16 @@
                 <div class="stat-value">{{ stats.totalRecords }}</div>
               </div>
               <div class="stat-card" style="border-left-color: #48bb78;">
-                <div class="stat-label">平均良率 (%)</div>
-                <div class="stat-value">{{ stats.avgYield }}</div>
+                <div class="stat-label">良品数量</div>
+                <div class="stat-value">{{ stats.goodQty }}</div>
               </div>
               <div class="stat-card" style="border-left-color: #f6ad55;">
-                <div class="stat-label">总不良数</div>
-                <div class="stat-value">{{ stats.totalDefect }}</div>
+                <div class="stat-label">实际总数</div>
+                <div class="stat-value">{{ stats.actualTotal }}</div>
               </div>
               <div class="stat-card" style="border-left-color: #fc8181;">
-                <div class="stat-label">本月产量</div>
-                <div class="stat-value">{{ stats.monthlyYield }}</div>
+                <div class="stat-label">总直通率 (%)</div>
+                <div class="stat-value">{{ stats.passRate }}</div>
               </div>
             </div>
 
@@ -835,9 +919,84 @@
 
           <!-- 系统设置页面 -->
           <div class="page-section" id="page-settings">
-            <div style="max-width: 600px;">
+            <div style="max-width: 800px;">
               <h2 style="font-size: 20px; font-weight: 700; color: #2d3748; margin-bottom: 24px;">系统设置</h2>
 
+              <!-- 用户管理 -->
+              <div style="background: white; border-radius: 16px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 24px;">
+                <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 16px; color: #4a5568;">用户管理</h3>
+
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                  <div style="font-size: 13px; color: #718096;">共 {{ usersList.length }} 个用户</div>
+                  <el-button type="primary" size="small" @click="openAddUserDialog">新增用户</el-button>
+                </div>
+
+                <div style="overflow-x: auto;">
+                  <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                    <thead>
+                      <tr style="background: #f7fafc; text-align: left;">
+                        <th style="padding: 10px 12px; border-bottom: 2px solid #e2e8f0; color: #4a5568;">用户名</th>
+                        <th style="padding: 10px 12px; border-bottom: 2px solid #e2e8f0; color: #4a5568;">角色</th>
+                        <th style="padding: 10px 12px; border-bottom: 2px solid #e2e8f0; color: #4a5568;">备注</th>
+                        <th style="padding: 10px 12px; border-bottom: 2px solid #e2e8f0; color: #4a5568;">操作</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="u in usersList" :key="u.id" style="border-bottom: 1px solid #edf2f7;">
+                        <td style="padding: 10px 12px; color: #2d3748;">{{ u.username }}</td>
+                        <td style="padding: 10px 12px;">
+                          <el-select
+                            :model-value="u.role"
+                            @change="updateUserRole(u.id, $event)"
+                            size="small"
+                            style="width: 100px;"
+                          >
+                            <el-option label="管理员" value="admin" />
+                            <el-option label="普通用户" value="user" />
+                          </el-select>
+                        </td>
+                        <td style="padding: 10px 12px; color: #718096;">{{ u.备注 || '-' }}</td>
+                        <td style="padding: 10px 12px;">
+                          <el-button type="danger" size="small" @click="deleteUser(u)">删除</el-button>
+                        </td>
+                      </tr>
+                      <tr v-if="usersList.length === 0">
+                        <td colspan="4" style="padding: 24px; text-align: center; color: #a0aec0;">暂无用户数据，请在 Supabase 后台添加用户</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div style="margin-top: 12px; font-size: 12px; color: #a0aec0;">
+                  提示：删除用户请在 Supabase 后台操作，此处仅可修改用户角色
+                </div>
+              </div>
+
+              <!-- 新增用户对话框 -->
+              <el-dialog v-model="showAddUserDialog" title="新增用户" width="420px">
+                <el-form :model="addUserForm" label-width="80px">
+                  <el-form-item label="用户名">
+                    <el-input v-model="addUserForm.username" placeholder="请输入用户名（如：zhangsan）" />
+                  </el-form-item>
+                  <el-form-item label="密码">
+                    <el-input v-model="addUserForm.password" type="password" placeholder="请输入密码" show-password />
+                  </el-form-item>
+                  <el-form-item label="角色">
+                    <el-select v-model="addUserForm.role" style="width: 100%;">
+                      <el-option label="管理员" value="admin" />
+                      <el-option label="普通用户" value="user" />
+                    </el-select>
+                  </el-form-item>
+                  <el-form-item label="备注">
+                    <el-input v-model="addUserForm.备注" type="textarea" :rows="2" placeholder="可选" />
+                  </el-form-item>
+                </el-form>
+                <template #footer>
+                  <el-button @click="showAddUserDialog = false">取消</el-button>
+                  <el-button type="primary" @click="handleAddUser" :loading="addUserLoading">确定</el-button>
+                </template>
+              </el-dialog>
+
+              <!-- 数据管理 -->
               <div style="background: white; border-radius: 16px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
                 <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 16px; color: #4a5568;">数据管理</h3>
 
@@ -879,7 +1038,7 @@
       :title="isEditing ? '编辑记录' : '新增记录'"
       width="800px"
     >
-      <el-form :model="form" label-width="120px">
+      <el-form :model="form" label-width="80px" label-position="right">
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="日期">
@@ -1006,24 +1165,27 @@
         <el-divider content-position="left">计算结果</el-divider>
         
         <el-row :gutter="20">
-          <el-col :span="6">
+          <el-col :span="12">
             <el-form-item label="实际此单总数">
-              <el-input :value="calculatedFields.actual_total" disabled />
+              <el-input :value="calculatedFields.actual_total" disabled style="width: 100%;" />
             </el-form-item>
           </el-col>
-          <el-col :span="6">
+          <el-col :span="12">
             <el-form-item label="损耗(%)">
-              <el-input :value="calculatedFields.loss_rate" disabled />
+              <el-input :value="calculatedFields.loss_rate" disabled style="width: 100%;" />
             </el-form-item>
           </el-col>
-          <el-col :span="6">
-            <el-form-item label="一次底凸短路爆破率(%)">
-              <el-input :value="calculatedFields.first_pass_defect_rate" disabled />
+        </el-row>
+
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="底凸短路爆破率(%)">
+              <el-input :value="calculatedFields.first_pass_defect_rate" disabled style="width: 100%;" />
             </el-form-item>
           </el-col>
-          <el-col :span="6">
+          <el-col :span="12">
             <el-form-item label="一次直通率(%)">
-              <el-input :value="calculatedFields.first_pass_rate" disabled />
+              <el-input :value="calculatedFields.first_pass_rate" disabled style="width: 100%;" />
             </el-form-item>
           </el-col>
         </el-row>
@@ -1103,23 +1265,67 @@
         const currentId = ref(null);
         const fileInput = ref(null);
 
+        // ===== 用户管理状态 =====
+        const usersList = ref([]);
+        const showAddUserDialog = ref(false);
+        const addUserLoading = ref(false);
+        const addUserForm = ref({ username: '', password: '', role: 'user', 备注: '' });
+
         // ===== 工作表状态 =====
         const sheets = ref(['默认']);
         const currentSheet = ref('默认');
         const ALL_SHEET_NAME = '全年表';
 
-        // 全年表日期范围筛选（精确到月份）
-        const dateRangeStart = ref(''); // 开始月份，格式 '2026-01'
-        const dateRangeEnd = ref('');   // 结束月份，格式 '2026-03'
-        const dateRangeValid = computed(() => dateRangeStart.value && dateRangeEnd.value);
+        // 全年表日期范围筛选（精确到日期）
+        const dateRange = ref([]); // daterange 返回值：[startDate, endDate]
+        const dateRangeShortcuts = [
+          {
+            text: '今天',
+            value: [new Date(), new Date()],
+          },
+          {
+            text: '最近7天',
+            value: (() => {
+              const end = new Date();
+              const start = new Date();
+              start.setDate(start.getDate() - 6);
+              return [start, end];
+            })(),
+          },
+          {
+            text: '最近30天',
+            value: (() => {
+              const end = new Date();
+              const start = new Date();
+              start.setDate(start.getDate() - 29);
+              return [start, end];
+            })(),
+          },
+          {
+            text: '本月',
+            value: (() => {
+              const now = new Date();
+              const start = new Date(now.getFullYear(), now.getMonth(), 1);
+              return [start, now];
+            })(),
+          },
+        ];
 
         // ===== 统计数据 =====
-        const stats = ref({
-          totalRecords: 0,
-          avgYield: 0,
-          totalDefect: 0,
-          monthlyYield: 0,
-        });
+        // ===== 统计数据（基于当前筛选结果自动计算）=====
+        const stats = computed(() => {
+          const data = filteredData.value;
+          const totalRecords = data.length;
+          const totalGood = data.reduce((s, r) => s + (r.good_qty || 0), 0);
+          const totalActual = data.reduce((s, r) => s + (r.actual_total || 0), 0);
+          // 良品数量 = 所有良品数之和
+          const goodQty = totalGood;
+          // 实际总数 = 所有实际此单总数之和
+          const actualTotal = totalActual;
+          // 总直通率 = 所有良品数之和 / 所有实际此单数总数之和 × 100%
+          const passRate = totalActual > 0 ? ((totalGood / totalActual) * 100).toFixed(2) : 0;
+          return { totalRecords, goodQty, actualTotal, passRate };
+        });;
 
         // ===== 表单 =====
         const form = ref({
@@ -1168,21 +1374,125 @@
           };
         });
 
+        // ===== 高级筛选 =====
+        const showFilterDialog = ref(false);
+        const filterForm = ref({
+          dateRange: [],
+          cycle: '',
+          batchNo: '',
+          spec: '',
+          size: '',
+          materialCode: '',
+          foilVoltage: '',
+          operator: '',
+          defectType: '',
+          notes: '',
+        });
+        const activeFilter = ref({
+          dateRange: [],
+          cycle: '',
+          batchNo: '',
+          spec: '',
+          size: '',
+          materialCode: '',
+          foilVoltage: '',
+          operator: '',
+          defectType: '',
+          notes: '',
+        });
+        const hasActiveFilter = computed(() => {
+          const f = activeFilter.value;
+          return !!(f.dateRange && f.dateRange.length === 2) || f.cycle || f.batchNo || f.spec || f.size || f.materialCode || f.foilVoltage || f.operator || f.defectType || f.notes;
+        });
+        const openFilterDialog = () => {
+          filterForm.value = {
+            dateRange: activeFilter.value.dateRange ? [...activeFilter.value.dateRange] : [],
+            cycle: activeFilter.value.cycle,
+            batchNo: activeFilter.value.batchNo,
+            spec: activeFilter.value.spec,
+            size: activeFilter.value.size,
+            materialCode: activeFilter.value.materialCode,
+            foilVoltage: activeFilter.value.foilVoltage,
+            operator: activeFilter.value.operator,
+            defectType: activeFilter.value.defectType,
+            notes: activeFilter.value.notes,
+          };
+          showFilterDialog.value = true;
+        };
+        const confirmFilter = () => {
+          activeFilter.value = { ...filterForm.value };
+          showFilterDialog.value = false;
+        };
+        const clearFilter = () => {
+          activeFilter.value = { dateRange: [], cycle: '', batchNo: '', spec: '', size: '', materialCode: '', foilVoltage: '', operator: '', defectType: '', notes: '' };
+          dateRange.value = [];
+        };
+        const filterFormReset = () => {
+          filterForm.value = { dateRange: [], cycle: '', batchNo: '', spec: '', size: '', materialCode: '', foilVoltage: '', operator: '', defectType: '', notes: '' };
+        };
+
         const filteredData = computed(() => {
           const q = searchQuery.value.toLowerCase().trim();
           let data = records.value;
 
           // 全年表模式：不过滤 sheet_name，按日期范围过滤
           if (currentSheet.value === ALL_SHEET_NAME || currentSheet.value === '全年表') {
-            if (dateRangeValid.value) {
-              const start = dateRangeStart.value;
-              const end = dateRangeEnd.value;
+            // 工具栏日期范围（daterange）
+            if (dateRange.value && dateRange.value.length === 2) {
+              const start = dateRange.value[0];
+              const end = dateRange.value[1];
               data = data.filter(r => {
                 if (!r.entry_date) return false;
-                return r.entry_date >= start + '-01' && r.entry_date <= end + '-31';
+                return r.entry_date >= start && r.entry_date <= end;
               });
             }
-            // 日期范围为空时，显示所有数据（全年汇总）
+            // 高级筛选条件
+            const af = activeFilter.value;
+            if (af.dateRange && af.dateRange.length === 2) {
+              const start = af.dateRange[0];
+              const end = af.dateRange[1];
+              data = data.filter(r => {
+                if (!r.entry_date) return false;
+                return r.entry_date >= start && r.entry_date <= end;
+              });
+            }
+            if (af.spec) {
+              const s = af.spec.toLowerCase();
+              data = data.filter(r => r.spec && r.spec.toLowerCase().includes(s));
+            }
+            if (af.size) {
+              const s = af.size.toLowerCase();
+              data = data.filter(r => r.size && r.size.toLowerCase().includes(s));
+            }
+            if (af.cycle) {
+              const s = af.cycle.toLowerCase();
+              data = data.filter(r => r.cycle && r.cycle.toLowerCase().includes(s));
+            }
+            if (af.batchNo) {
+              const s = af.batchNo.toLowerCase();
+              data = data.filter(r => r.batch_no && r.batch_no.toLowerCase().includes(s));
+            }
+            if (af.materialCode) {
+              const s = af.materialCode.toLowerCase();
+              data = data.filter(r => r.material_code && r.material_code.toLowerCase().includes(s));
+            }
+            if (af.foilVoltage) {
+              const s = af.foilVoltage.toLowerCase();
+              data = data.filter(r => r.foil_voltage && r.foil_voltage.toLowerCase().includes(s));
+            }
+            if (af.operator) {
+              const s = af.operator.toLowerCase();
+              data = data.filter(r => r.operator && r.operator.toLowerCase().includes(s));
+            }
+            if (af.defectType) {
+              const s = af.defectType.toLowerCase();
+              data = data.filter(r => r.defect_type && r.defect_type.toLowerCase().includes(s));
+            }
+            if (af.notes) {
+              const s = af.notes.toLowerCase();
+              data = data.filter(r => r.notes && r.notes.toLowerCase().includes(s));
+            }
+            // 无筛选条件时，显示所有数据（全年汇总）
           } else {
             data = data.filter(r => r.sheet_name === currentSheet.value);
           }
@@ -1253,6 +1563,9 @@
               initCharts();
             });
           }
+          if (page === 'settings') {
+            loadUsers();
+          }
         };
 
         // ===== 工作表方法 =====
@@ -1261,8 +1574,7 @@
           currentPageNum.value = 1;
           // 切换离开全年表时，清空日期范围
           if (sheet !== ALL_SHEET_NAME && sheet !== '全年表') {
-            dateRangeStart.value = '';
-            dateRangeEnd.value = '';
+            dateRange.value = [];
           }
         };
 
@@ -1320,7 +1632,109 @@
           await supabaseClient.auth.signOut();
           localStorage.removeItem('isLoggedIn');
           localStorage.removeItem('username');
+          localStorage.removeItem('userRole');
           window.location.href = 'login.html';
+        };
+
+        // ===== 用户管理 =====
+        const loadUsers = async () => {
+          try {
+            const { data, error } = await supabaseClient
+              .from('users')
+              .select('*')
+              .order('created_at', { ascending: true });
+            if (error) throw error;
+            usersList.value = data || [];
+          } catch (err) {
+            console.error('加载用户失败:', err);
+          }
+        };
+
+        const updateUserRole = async (userId, newRole) => {
+          try {
+            const { error } = await supabaseClient
+              .from('users')
+              .update({ role: newRole })
+              .eq('id', userId);
+            if (error) throw error;
+            ElementPlus.ElMessage.success('角色已更新');
+            // 如果修改的是当前用户，同步更新本地存储
+            const currentUserId = (await supabaseClient.auth.getUser()).data.user?.id;
+            if (userId === currentUserId) {
+              localStorage.setItem('userRole', newRole);
+            }
+          } catch (err) {
+            ElementPlus.ElMessage.error('更新失败: ' + err.message);
+          }
+        };
+
+        const deleteUser = async (u) => {
+          try {
+            await ElementPlus.ElMessageBox.confirm(
+              `确认删除用户"${u.username}"吗？此操作不可恢复！`,
+              '确认删除',
+              { type: 'warning' }
+            );
+            const { error } = await supabaseClient
+              .from('users')
+              .delete()
+              .eq('id', u.id);
+            if (error) throw error;
+            ElementPlus.ElMessage.success('用户已删除');
+            loadUsers();
+          } catch (err) {
+            if (err !== 'cancel') ElementPlus.ElMessage.error('删除失败: ' + err.message);
+          }
+        };
+
+        // ===== 新增用户 =====
+        const openAddUserDialog = () => {
+          addUserForm.value = { username: '', password: '', role: 'user', 备注: '' };
+          showAddUserDialog.value = true;
+        };
+
+        const handleAddUser = async () => {
+          if (!addUserForm.value.username || !addUserForm.value.password) {
+            ElementPlus.ElMessage.warning('用户名和密码不能为空');
+            return;
+          }
+          addUserLoading.value = true;
+          try {
+            // 先在 Supabase Auth 创建用户
+            const email = addUserForm.value.username + '@local.dev';
+            const { data, error } = await supabaseClient.auth.signUp({
+              email,
+              password: addUserForm.value.password,
+            });
+
+            if (error) {
+              // 用户可能已存在，尝试直接插入 users 表
+              ElementPlus.ElMessage.error('创建失败: ' + error.message);
+              addUserLoading.value = false;
+              return;
+            }
+
+            // 写入 users 资料表
+            if (data.user) {
+              const { error: dbError } = await supabaseClient
+                .from('users')
+                .insert([{
+                  id: data.user.id,
+                  username: addUserForm.value.username,
+                  role: addUserForm.value.role,
+                  备注: addUserForm.value.备注,
+                }]);
+              if (dbError) throw dbError;
+            }
+
+            ElementPlus.ElMessage.success(`用户"${addUserForm.value.username}"创建成功`);
+            showAddUserDialog.value = false;
+            loadUsers();
+          } catch (err) {
+            ElementPlus.ElMessage.error('创建失败: ' + err.message);
+          } finally {
+            addUserLoading.value = false;
+          }
         };
 
         const loadData = async () => {
@@ -1351,7 +1765,6 @@
               }
             }
             
-            updateStats();
             ElementPlus.ElMessage.success(`加载了 ${records.value.length} 条记录`);
           } catch (err) {
             ElementPlus.ElMessage.error('加载数据失败: ' + err.message);
@@ -1361,28 +1774,7 @@
           }
         };
 
-        const updateStats = () => {
-          const data = filteredData.value;
-          stats.value.totalRecords = data.length;
-
-          const totalGood = data.reduce((s, r) => s + (r.good_qty || 0), 0);
-          const totalActual = data.reduce((s, r) => s + (r.actual_total || 0), 0);
-          stats.value.avgYield = totalActual > 0 ? (totalGood / totalActual * 100).toFixed(2) : 0;
-
-          stats.value.totalDefect = data.reduce((s, r) =>
-            s + ((r.actual_total || 0) - (r.good_qty || 0)), 0
-          );
-
-          // 本月良品数：全年表模式下显示汇总良品数，否则显示当月良品数
-          if (currentSheet.value === ALL_SHEET_NAME) {
-            stats.value.monthlyYield = data.reduce((s, r) => s + (r.good_qty || 0), 0);
-          } else {
-            const thisMonth = new Date().getMonth();
-            stats.value.monthlyYield = data
-              .filter(r => r.entry_date && new Date(r.entry_date).getMonth() === thisMonth)
-              .reduce((s, r) => s + (r.good_qty || 0), 0);
-          }
-        };
+        
 
         const resetForm = () => {
           form.value = {
@@ -1450,7 +1842,7 @@
               // 新增记录
               const { data, error } = await supabaseClient
                 .from('production_records')
-                .insert([{ ...recordData, user_id: user.value.id }])
+                .insert([recordData])
                 .select();
 
               if (error) throw error;
@@ -1725,6 +2117,56 @@
           }
         };
 
+        // 导出当前工作表（或全年表的所有数据）
+        const handleExportCurrent = () => {
+          try {
+            const data = filteredData.value;
+            if (data.length === 0) {
+              ElementPlus.ElMessage.warning('当前没有可导出的数据');
+              return;
+            }
+
+            const exportData = data.map(r => ({
+              '日期': r.entry_date,
+              '周期': r.cycle,
+              '批号': r.batch_no,
+              '物料代码': r.material_code,
+              '规格': r.spec,
+              '尺寸': r.size,
+              '正箔电压': r.foil_voltage,
+              '设计数量': r.design_qty,
+              '实际此单总数': r.actual_total,
+              '卷绕数': r.winding_qty,
+              '良品数': r.good_qty,
+              '损耗(%)': r.loss_rate,
+              '一次底凸短路爆破率(%)': r.first_pass_defect_rate,
+              '一次直通率(%)': r.first_pass_rate,
+              '短路': r.defect_short,
+              '爆破': r.defect_blast,
+              '底凸': r.defect_bulge,
+              '外观': r.defect_appearance,
+              '漏电': r.defect_leakage,
+              '高容': r.defect_high_cap,
+              '低容': r.defect_low_cap,
+              'DF': r.defect_df,
+              '作业员': r.operator,
+              '不良类型': r.defect_type,
+              '备注': r.notes,
+            }));
+
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.json_to_sheet(exportData);
+            const sheetName = currentSheet.value;
+            XLSX.utils.book_append_sheet(wb, ws, sheetName);
+
+            XLSX.writeFile(wb, `${sheetName}_${new Date().toISOString().slice(0, 10)}.xlsx`);
+            ElementPlus.ElMessage.success('导出成功');
+          } catch (err) {
+            console.error('导出失败:', err);
+            ElementPlus.ElMessage.error('导出失败: ' + err.message);
+          }
+        };
+
         const clearAllData = async () => {
           try {
             await ElementPlus.ElMessageBox.confirm('确认清空所有数据吗？此操作不可恢复！', '危险操作', { type: 'warning' });
@@ -1878,6 +2320,7 @@
           deleteRecord,
           handleImport,
           onFileChange,
+          handleExportCurrent,
           handleExport,
           clearAllData,
           sheets,
@@ -1886,14 +2329,34 @@
           addSheet,
           deleteSheet,
           stats,
-          dateRangeStart,
-          dateRangeEnd,
-          dateRangeValid,
+          dateRange,
+          dateRangeShortcuts,
+          // 高级筛选
+          showFilterDialog,
+          filterForm,
+          activeFilter,
+          hasActiveFilter,
+          openFilterDialog,
+          confirmFilter,
+          clearFilter,
+          filterFormReset,
+          // 用户管理
+          usersList,
+          loadUsers,
+          updateUserRole,
+          deleteUser,
+          showAddUserDialog,
+          addUserLoading,
+          addUserForm,
+          openAddUserDialog,
+          handleAddUser,
         };
       }
     });
     
-    app.use(ElementPlus).mount('#app');
+    app.use(ElementPlus, {
+      locale: ElementPlusLocaleZhCn,
+    }).mount('#app');
     window.app = app;
 
   </script>

@@ -146,13 +146,13 @@
 
         <form @submit.prevent="handleLogin" class="login-form">
           <div class="form-group">
-            <label class="form-label">邮箱</label>
+            <label class="form-label">用户名</label>
             <input
-              type="email"
-              v-model="email"
-              placeholder="admin@123.com"
+              type="text"
+              v-model="username"
+              placeholder="请输入用户名"
               class="form-input"
-              autocomplete="email"
+              autocomplete="username"
               required
             />
           </div>
@@ -192,32 +192,68 @@
 
     createApp({
       setup() {
-        const email = ref('');
+        const username = ref('');
         const password = ref('');
         const loading = ref(false);
         const errorMsg = ref('');
+
+        // 用户名转邮箱（兼容旧账号）
+        const toEmail = (name) => {
+          if (name.includes('@')) return name;
+          // 先尝试新格式，登录失败后再尝试旧格式
+          return name + '@local.dev';
+        };
+
+        // 兼容旧账号：尝试用常见后缀登录
+        const tryLogin = async (email, password) => {
+          return await supabaseClient.auth.signInWithPassword({ email, password });
+        };
 
         const handleLogin = async () => {
           loading.value = true;
           errorMsg.value = '';
 
+          const email = toEmail(username.value);
+
           try {
-            const { data, error } = await supabaseClient.auth.signInWithPassword({
-              email: email.value,
-              password: password.value,
-            });
+            let { data, error } = await tryLogin(email, password.value);
+
+            // 如果新格式失败，尝试旧格式（xxx@123.com）
+            if (error && error.message === 'Invalid login credentials') {
+              const oldEmail = username.value + '@123.com';
+              const result2 = await tryLogin(oldEmail, password.value);
+              data = result2.data;
+              error = result2.error;
+            }
 
             if (error) {
-              errorMsg.value = error.message === 'Invalid login credentials' ? '邮箱或密码错误' : error.message;
+              errorMsg.value = error.message === 'Invalid login credentials' ? '用户名或密码错误' : error.message;
               loading.value = false;
               return;
             }
 
-            // 登录成功
+            // 登录成功：获取用户资料（失败不影响登录）
+            let userName = username.value;
+            let userRole = 'user';
+            try {
+              const { data: userData } = await supabaseClient
+                .from('users')
+                .select('username, role')
+                .eq('id', data.session.user.id)
+                .single();
+              if (userData) {
+                userName = userData.username;
+                userRole = userData.role;
+              }
+            } catch (e) {
+              // users 表可能还没有该用户，使用默认值
+            }
+
             localStorage.setItem('isLoggedIn', 'true');
-            localStorage.setItem('username', email.value);
+            localStorage.setItem('username', userName);
+            localStorage.setItem('userRole', userRole);
             localStorage.setItem('supabase_token', data.session.access_token);
-            
+
             ElementPlus.ElMessage.success('登录成功！');
             window.location.href = 'admin.html';
           } catch (err) {
@@ -228,7 +264,7 @@
         };
 
         return {
-          email,
+          username,
           password,
           loading,
           errorMsg,
