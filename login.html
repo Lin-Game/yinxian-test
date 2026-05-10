@@ -8,7 +8,7 @@
   <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
   <script src="https://unpkg.com/element-plus"></script>
   <link rel="stylesheet" href="https://unpkg.com/element-plus/dist/index.css" />
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -183,7 +183,6 @@
 
   <script>
     const { createApp, ref } = Vue;
-    const { ElMessage } = ElementPlus;
 
     // Supabase 配置
     const SUPABASE_URL = 'https://oosktyjqqcgjvtjxyony.supabase.co';
@@ -219,7 +218,7 @@
             localStorage.setItem('username', email.value);
             localStorage.setItem('supabase_token', data.session.access_token);
             
-            ElMessage.success('登录成功！');
+            ElementPlus.ElMessage.success('登录成功！');
             window.location.href = 'admin.html';
           } catch (err) {
             errorMsg.value = '登录失败：' + err.message;
