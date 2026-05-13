@@ -651,19 +651,19 @@
                 <div class="stat-value">{{ stats.totalRecords }}</div>
               </div>
               <div class="stat-card" style="border-left-color: #48bb78;">
+                <div class="stat-label">老化总数</div>
+                <div class="stat-value">{{ stats.agingTotal }}</div>
+              </div>
+              <div class="stat-card" style="border-left-color: #f6ad55;">
                 <div class="stat-label">老化不良数</div>
                 <div class="stat-value">{{ stats.agingDefectQty }}</div>
               </div>
-              <div class="stat-card" style="border-left-color: #f6ad55;">
-                <div class="stat-label">实际总数</div>
-                <div class="stat-value">{{ stats.actualTotal }}</div>
-              </div>
               <div class="stat-card" style="border-left-color: #fc8181;">
-                <div class="stat-label">总直通率 (%)</div>
-                <div class="stat-value">{{ stats.passRate }}</div>
+                <div class="stat-label">老化良率 (%)</div>
+                <div class="stat-value">{{ stats.agingYield }}</div>
               </div>
             </div>
-
+            
             <!-- 工具栏 -->
             <div class="toolbar">
               <el-input
@@ -807,9 +807,9 @@
                       <th>尺寸</th>
                       <th>正箔电压</th>
                       <th>老化总数</th>
-                      <th>实际此单总数</th>
                       <th>卷绕数</th>
                       <th>老化不良数</th>
+                      <th>老化良率(%)</th>
                       <th>一次底凸短路爆破率(%)</th>
                       <th>短路</th>
                       <th>爆破</th>
@@ -835,9 +835,9 @@
                       <td>{{ row.size }}</td>
                       <td>{{ row.foil_voltage }}</td>
                       <td>{{ row.aging_total }}</td>
-                      <td>{{ row.actual_total }}</td>
                       <td>{{ row.winding_qty }}</td>
                       <td>{{ row.aging_defect_qty }}</td>
+                      <td>{{ row.aging_total > 0 ? (((row.aging_total - row.aging_defect_qty) / row.aging_total) * 100).toFixed(2) : 0 }}%</td>
                       <td>{{ (row.first_pass_defect_rate || 0).toFixed(2) }}%</td>
                       <td>{{ row.defect_short }}</td>
                       <td>{{ row.defect_blast }}</td>
@@ -879,19 +879,19 @@
                 <div class="stat-value">{{ stats.totalRecords }}</div>
               </div>
               <div class="stat-card" style="border-left-color: #48bb78;">
+                <div class="stat-label">老化总数</div>
+                <div class="stat-value">{{ stats.agingTotal }}</div>
+              </div>
+              <div class="stat-card" style="border-left-color: #f6ad55;">
                 <div class="stat-label">老化不良数</div>
                 <div class="stat-value">{{ stats.agingDefectQty }}</div>
               </div>
-              <div class="stat-card" style="border-left-color: #f6ad55;">
-                <div class="stat-label">实际总数</div>
-                <div class="stat-value">{{ stats.actualTotal }}</div>
-              </div>
               <div class="stat-card" style="border-left-color: #fc8181;">
-                <div class="stat-label">总直通率 (%)</div>
-                <div class="stat-value">{{ stats.passRate }}</div>
+                <div class="stat-label">老化良率 (%)</div>
+                <div class="stat-value">{{ stats.agingYield }}</div>
               </div>
             </div>
-
+            
             <div class="chart-grid">
               <div class="chart-card">
                 <div class="chart-title">生产趋势（近7天）</div>
@@ -1281,12 +1281,10 @@
         const stats = computed(() => {
           const data = filteredData.value;
           const totalRecords = data.length;
-          const totalAgingDefect = data.reduce((s, r) => s + (r.aging_defect_qty || 0), 0);
-          const totalActual = data.reduce((s, r) => s + (r.actual_total || 0), 0);
-          const agingDefectQty = totalAgingDefect;
-          const actualTotal = totalActual;
-          const passRate = totalActual > 0 ? ((totalActual - totalAgingDefect) / totalActual * 100).toFixed(2) : 0;
-          return { totalRecords, agingDefectQty, actualTotal, passRate };
+          const agingTotal = data.reduce((s, r) => s + (r.aging_total || 0), 0);
+          const agingDefectQty = data.reduce((s, r) => s + (r.aging_defect_qty || 0), 0);
+          const agingYield = agingTotal > 0 ? ((agingTotal - agingDefectQty) / agingTotal * 100).toFixed(2) : 0;
+          return { totalRecords, agingTotal, agingDefectQty, agingYield };
         });;
 
         // ===== 表单 =====
@@ -1324,7 +1322,6 @@
             ((f.defect_short + f.defect_blast + f.defect_bulge) / actual_total * 100) : 0;
 
           return {
-            actual_total: actual_total,
             first_pass_defect_rate: first_pass_defect_rate.toFixed(2),
           };
         });
@@ -1777,8 +1774,6 @@
             const calc = calculatedFields.value;
             const recordData = {
               ...form.value,
-              sheet_name: currentSheet.value,
-              actual_total: calc.actual_total,
               first_pass_defect_rate: parseFloat(calc.first_pass_defect_rate),
             };
 
@@ -1944,7 +1939,7 @@
                   // 日志：检查关键字段
                   if (Math.random() < 0.1) { // 只打印10%的行，避免刷屏
                   }
-
+                  
                   return {
                     sheet_name: sheetName,
                     entry_date: entryDate,
@@ -1964,7 +1959,6 @@
                     defect_high_cap: defect_high_cap,
                     defect_low_cap: defect_low_cap,
                     defect_df: defect_df,
-                    actual_total: actual_total,
                     first_pass_defect_rate: first_pass_defect_rate,
                     operator: normalizedRow['作业员'] || '',
                     defect_type: normalizedRow['不良类型'] || '',
@@ -2030,7 +2024,6 @@
                 '尺寸': r.size,
                 '正箔电压': r.foil_voltage,
                 '老化总数': r.aging_total,
-                '实际此单总数': r.actual_total,
                 '卷绕数': r.winding_qty,
                 '老化不良数': r.aging_defect_qty,
                 '一次底凸短路爆破率(%)': r.first_pass_defect_rate,
@@ -2074,9 +2067,8 @@
               '规格': r.spec,
               '尺寸': r.size,
               '正箔电压': r.foil_voltage,
-              '老化总数': r.aging_total,
-              '实际此单总数': r.actual_total,
-              '卷绕数': r.winding_qty,
+                '老化总数': r.aging_total,
+                '卷绕数': r.winding_qty,
               '老化不良数': r.aging_defect_qty,
               '一次底凸短路爆破率(%)': r.first_pass_defect_rate,
               '短路': r.defect_short,
@@ -2172,7 +2164,7 @@
             ];
             const yieldData = yieldRanges.map(range => {
               return records.value.filter(r => {
-                const rate = r.actual_total > 0 ? ((r.actual_total - r.aging_defect_qty) / r.actual_total * 100) : 0;
+                const rate = r.aging_total > 0 ? ((r.aging_total - r.aging_defect_qty) / r.aging_total * 100) : 0;
                 return rate >= range.min && rate < range.max;
               }).length;
             });
