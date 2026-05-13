@@ -1051,7 +1051,7 @@
         </el-row>
 
         <el-row :gutter="20">
-          <el-col :span="12">
+          <el-col :span="24">
             <el-form-item label="批号">
               <el-input v-model="form.batch_no" placeholder="请输入批号" />
             </el-form-item>
@@ -1156,6 +1156,14 @@
               <el-input :value="calculatedFields.first_pass_defect_rate" disabled style="width: 100%;" />
             </el-form-item>
           </el-col>
+          <el-col :span="12">
+            <el-form-item label="老化良率(%)">
+              <el-input :value="calculatedFields.aging_yield" disabled style="width: 100%;" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        
+        <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="作业员">
               <el-input v-model="form.operator" placeholder="请输入作业员姓名" />
@@ -1321,8 +1329,12 @@
           const first_pass_defect_rate = actual_total > 0 ?
             ((f.defect_short + f.defect_blast + f.defect_bulge) / actual_total * 100) : 0;
 
+          const aging_yield = f.aging_total > 0 ?
+            ((f.aging_total - f.aging_defect_qty) / f.aging_total * 100) : 0;
+
           return {
             first_pass_defect_rate: first_pass_defect_rate.toFixed(2),
+            aging_yield: aging_yield.toFixed(2),
           };
         });
 
