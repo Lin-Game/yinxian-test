@@ -651,8 +651,8 @@
                 <div class="stat-value">{{ stats.totalRecords }}</div>
               </div>
               <div class="stat-card" style="border-left-color: #48bb78;">
-                <div class="stat-label">良品数量</div>
-                <div class="stat-value">{{ stats.goodQty }}</div>
+                <div class="stat-label">老化不良数</div>
+                <div class="stat-value">{{ stats.agingDefectQty }}</div>
               </div>
               <div class="stat-card" style="border-left-color: #f6ad55;">
                 <div class="stat-label">实际总数</div>
@@ -668,7 +668,7 @@
             <div class="toolbar">
               <el-input
                 v-model="searchQuery"
-                placeholder="搜索规格、物料代码、批号、作业员..."
+                placeholder="搜索规格、批号、作业员..."
                 style="width: 280px;"
                 clearable
                 @clear="loadData"
@@ -748,9 +748,6 @@
                 <el-form-item label="尺寸">
                   <el-input v-model="filterForm.size" placeholder="请输入尺寸（模糊匹配）" clearable />
                 </el-form-item>
-                <el-form-item label="物料代码">
-                  <el-input v-model="filterForm.materialCode" placeholder="请输入物料代码（模糊匹配）" clearable />
-                </el-form-item>
                 <el-form-item label="正箔电压">
                   <el-input v-model="filterForm.foilVoltage" placeholder="请输入正箔电压（模糊匹配）" clearable />
                 </el-form-item>
@@ -806,17 +803,14 @@
                       <th>日期</th>
                       <th>周期</th>
                       <th>批号</th>
-                      <th>物料代码</th>
                       <th>规格</th>
                       <th>尺寸</th>
                       <th>正箔电压</th>
-                      <th>设计数量</th>
+                      <th>老化总数</th>
                       <th>实际此单总数</th>
                       <th>卷绕数</th>
-                      <th>良品数</th>
-                      <th>损耗(%)</th>
+                      <th>老化不良数</th>
                       <th>一次底凸短路爆破率(%)</th>
-                      <th>一次直通率(%)</th>
                       <th>短路</th>
                       <th>爆破</th>
                       <th>底凸</th>
@@ -837,17 +831,14 @@
                       <td>{{ row.entry_date }}</td>
                       <td>{{ row.cycle }}</td>
                       <td>{{ row.batch_no }}</td>
-                      <td>{{ row.material_code }}</td>
                       <td>{{ row.spec }}</td>
                       <td>{{ row.size }}</td>
                       <td>{{ row.foil_voltage }}</td>
-                      <td>{{ row.design_qty }}</td>
+                      <td>{{ row.aging_total }}</td>
                       <td>{{ row.actual_total }}</td>
                       <td>{{ row.winding_qty }}</td>
-                      <td>{{ row.good_qty }}</td>
-                      <td>{{ (row.loss_rate || 0).toFixed(2) }}%</td>
+                      <td>{{ row.aging_defect_qty }}</td>
                       <td>{{ (row.first_pass_defect_rate || 0).toFixed(2) }}%</td>
-                      <td>{{ (row.first_pass_rate || 0).toFixed(2) }}%</td>
                       <td>{{ row.defect_short }}</td>
                       <td>{{ row.defect_blast }}</td>
                       <td>{{ row.defect_bulge }}</td>
@@ -888,8 +879,8 @@
                 <div class="stat-value">{{ stats.totalRecords }}</div>
               </div>
               <div class="stat-card" style="border-left-color: #48bb78;">
-                <div class="stat-label">良品数量</div>
-                <div class="stat-value">{{ stats.goodQty }}</div>
+                <div class="stat-label">老化不良数</div>
+                <div class="stat-value">{{ stats.agingDefectQty }}</div>
               </div>
               <div class="stat-card" style="border-left-color: #f6ad55;">
                 <div class="stat-label">实际总数</div>
@@ -1065,11 +1056,6 @@
               <el-input v-model="form.batch_no" placeholder="请输入批号" />
             </el-form-item>
           </el-col>
-          <el-col :span="12">
-            <el-form-item label="物料代码">
-              <el-input v-model="form.material_code" placeholder="请输入物料代码" />
-            </el-form-item>
-          </el-col>
         </el-row>
 
         <el-row :gutter="20">
@@ -1092,8 +1078,8 @@
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="设计数量">
-              <el-input-number v-model="form.design_qty" :min="0" style="width: 100%;" />
+            <el-form-item label="老化总数">
+              <el-input-number v-model="form.aging_total" :min="0" style="width: 100%;" />
             </el-form-item>
           </el-col>
         </el-row>
@@ -1105,8 +1091,8 @@
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="良品数">
-              <el-input-number v-model="form.good_qty" :min="0" style="width: 100%;" />
+            <el-form-item label="老化不良数">
+              <el-input-number v-model="form.aging_defect_qty" :min="0" style="width: 100%;" />
             </el-form-item>
           </el-col>
         </el-row>
@@ -1166,31 +1152,10 @@
         
         <el-row :gutter="20">
           <el-col :span="12">
-            <el-form-item label="实际此单总数">
-              <el-input :value="calculatedFields.actual_total" disabled style="width: 100%;" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="损耗(%)">
-              <el-input :value="calculatedFields.loss_rate" disabled style="width: 100%;" />
-            </el-form-item>
-          </el-col>
-        </el-row>
-
-        <el-row :gutter="20">
-          <el-col :span="12">
             <el-form-item label="底凸短路爆破率(%)">
               <el-input :value="calculatedFields.first_pass_defect_rate" disabled style="width: 100%;" />
             </el-form-item>
           </el-col>
-          <el-col :span="12">
-            <el-form-item label="一次直通率(%)">
-              <el-input :value="calculatedFields.first_pass_rate" disabled style="width: 100%;" />
-            </el-form-item>
-          </el-col>
-        </el-row>
-
-        <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="作业员">
               <el-input v-model="form.operator" placeholder="请输入作业员姓名" />
@@ -1316,15 +1281,12 @@
         const stats = computed(() => {
           const data = filteredData.value;
           const totalRecords = data.length;
-          const totalGood = data.reduce((s, r) => s + (r.good_qty || 0), 0);
+          const totalAgingDefect = data.reduce((s, r) => s + (r.aging_defect_qty || 0), 0);
           const totalActual = data.reduce((s, r) => s + (r.actual_total || 0), 0);
-          // 良品数量 = 所有良品数之和
-          const goodQty = totalGood;
-          // 实际总数 = 所有实际此单总数之和
+          const agingDefectQty = totalAgingDefect;
           const actualTotal = totalActual;
-          // 总直通率 = 所有良品数之和 / 所有实际此单数总数之和 × 100%
-          const passRate = totalActual > 0 ? ((totalGood / totalActual) * 100).toFixed(2) : 0;
-          return { totalRecords, goodQty, actualTotal, passRate };
+          const passRate = totalActual > 0 ? ((totalActual - totalAgingDefect) / totalActual * 100).toFixed(2) : 0;
+          return { totalRecords, agingDefectQty, actualTotal, passRate };
         });;
 
         // ===== 表单 =====
@@ -1332,13 +1294,12 @@
           entry_date: new Date().toISOString().slice(0, 10),
           cycle: '',
           batch_no: '',
-          material_code: '',
           spec: '',
           size: '',
           foil_voltage: '',
-          design_qty: 0,
+          aging_total: 0,
           winding_qty: 0,
-          good_qty: 0,
+          aging_defect_qty: 0,
           defect_short: 0,
           defect_blast: 0,
           defect_bulge: 0,
@@ -1355,22 +1316,16 @@
         // ===== 计算属性 =====
         const calculatedFields = computed(() => {
           const f = form.value;
-          const actual_total = f.good_qty + f.defect_short + f.defect_blast + 
-                            f.defect_bulge + f.defect_appearance + f.defect_leakage + 
+          const actual_total = f.aging_defect_qty + f.defect_short + f.defect_blast +
+                            f.defect_bulge + f.defect_appearance + f.defect_leakage +
                             f.defect_high_cap + f.defect_low_cap + f.defect_df;
-          
-          const loss_rate = f.design_qty > 0 ? ((actual_total - f.design_qty) / f.design_qty * 100) : 0;
-          
-          const first_pass_defect_rate = actual_total > 0 ? 
+
+          const first_pass_defect_rate = actual_total > 0 ?
             ((f.defect_short + f.defect_blast + f.defect_bulge) / actual_total * 100) : 0;
-          
-          const first_pass_rate = actual_total > 0 ? (f.good_qty / actual_total * 100) : 0;
-          
+
           return {
             actual_total: actual_total,
-            loss_rate: loss_rate.toFixed(2),
             first_pass_defect_rate: first_pass_defect_rate.toFixed(2),
-            first_pass_rate: first_pass_rate.toFixed(2),
           };
         });
 
@@ -1382,7 +1337,6 @@
           batchNo: '',
           spec: '',
           size: '',
-          materialCode: '',
           foilVoltage: '',
           operator: '',
           defectType: '',
@@ -1394,7 +1348,6 @@
           batchNo: '',
           spec: '',
           size: '',
-          materialCode: '',
           foilVoltage: '',
           operator: '',
           defectType: '',
@@ -1402,7 +1355,7 @@
         });
         const hasActiveFilter = computed(() => {
           const f = activeFilter.value;
-          return !!(f.dateRange && f.dateRange.length === 2) || f.cycle || f.batchNo || f.spec || f.size || f.materialCode || f.foilVoltage || f.operator || f.defectType || f.notes;
+          return !!(f.dateRange && f.dateRange.length === 2) || f.cycle || f.batchNo || f.spec || f.size || f.foilVoltage || f.operator || f.defectType || f.notes;
         });
         const openFilterDialog = () => {
           filterForm.value = {
@@ -1411,7 +1364,6 @@
             batchNo: activeFilter.value.batchNo,
             spec: activeFilter.value.spec,
             size: activeFilter.value.size,
-            materialCode: activeFilter.value.materialCode,
             foilVoltage: activeFilter.value.foilVoltage,
             operator: activeFilter.value.operator,
             defectType: activeFilter.value.defectType,
@@ -1424,11 +1376,11 @@
           showFilterDialog.value = false;
         };
         const clearFilter = () => {
-          activeFilter.value = { dateRange: [], cycle: '', batchNo: '', spec: '', size: '', materialCode: '', foilVoltage: '', operator: '', defectType: '', notes: '' };
+          activeFilter.value = { dateRange: [], cycle: '', batchNo: '', spec: '', size: '', foilVoltage: '', operator: '', defectType: '', notes: '' };
           dateRange.value = [];
         };
         const filterFormReset = () => {
-          filterForm.value = { dateRange: [], cycle: '', batchNo: '', spec: '', size: '', materialCode: '', foilVoltage: '', operator: '', defectType: '', notes: '' };
+          filterForm.value = { dateRange: [], cycle: '', batchNo: '', spec: '', size: '', foilVoltage: '', operator: '', defectType: '', notes: '' };
         };
 
         const filteredData = computed(() => {
@@ -1472,10 +1424,6 @@
               const s = af.batchNo.toLowerCase();
               data = data.filter(r => r.batch_no && r.batch_no.toLowerCase().includes(s));
             }
-            if (af.materialCode) {
-              const s = af.materialCode.toLowerCase();
-              data = data.filter(r => r.material_code && r.material_code.toLowerCase().includes(s));
-            }
             if (af.foilVoltage) {
               const s = af.foilVoltage.toLowerCase();
               data = data.filter(r => r.foil_voltage && r.foil_voltage.toLowerCase().includes(s));
@@ -1498,10 +1446,9 @@
           }
 
           // 再按搜索词筛选
-          if (q) {
+            if (q) {
             data = data.filter(r =>
               (r.spec && r.spec.toLowerCase().includes(q)) ||
-              (r.material_code && r.material_code.toLowerCase().includes(q)) ||
               (r.batch_no && r.batch_no.toLowerCase().includes(q)) ||
               (r.operator && r.operator.toLowerCase().includes(q))
             );
@@ -1790,13 +1737,12 @@
             entry_date: new Date().toISOString().slice(0, 10),
             cycle: '',
             batch_no: '',
-            material_code: '',
             spec: '',
             size: '',
             foil_voltage: '',
-            design_qty: 0,
+            aging_total: 0,
             winding_qty: 0,
-            good_qty: 0,
+            aging_defect_qty: 0,
             defect_short: 0,
             defect_blast: 0,
             defect_bulge: 0,
@@ -1833,9 +1779,7 @@
               ...form.value,
               sheet_name: currentSheet.value,
               actual_total: calc.actual_total,
-              loss_rate: parseFloat(calc.loss_rate),
               first_pass_defect_rate: parseFloat(calc.first_pass_defect_rate),
-              first_pass_rate: parseFloat(calc.first_pass_rate),
             };
 
             if (isEditing.value) {
@@ -1910,7 +1854,7 @@
                 
                 // 找到包含关键列名的表头行（如"日期"、"规格"）
                 let headerRowIndex = -1;
-                const keyColumns = ['日期', '规格', '批号', '物料代码'];
+                const keyColumns = ['日期', '规格', '批号'];
                 
                 for (let i = 0; i < Math.min(rawData.length, 10); i++) {
                   const row = rawData[i];
@@ -1986,38 +1930,32 @@
                   const defect_high_cap = Number(normalizedRow['高容']) || 0;
                   const defect_low_cap = Number(normalizedRow['低容']) || 0;
                   const defect_df = Number(normalizedRow['DF']) || 0;
-                  const good_qty = Number(normalizedRow['良品数']) || 0;
+                  const aging_defect_qty = Number(normalizedRow['良品数']) || 0;
                   
-                  const actual_total = good_qty + defect_short + defect_blast + 
+                  const actual_total = aging_defect_qty + defect_short + defect_blast + 
                                      defect_bulge + defect_appearance + defect_leakage + 
                                      defect_high_cap + defect_low_cap + defect_df;
                   
-                  const design_qty = Number(normalizedRow['设计数量']) || 0;
+                  const aging_total = Number(normalizedRow['设计数量']) || 0;
                   
-                  const loss_rate = design_qty > 0 ? ((actual_total - design_qty) / design_qty * 100) : 0;
                   const first_pass_defect_rate = actual_total > 0 ? 
                     ((defect_short + defect_blast + defect_bulge) / actual_total * 100) : 0;
-                  const first_pass_rate = actual_total > 0 ? (good_qty / actual_total * 100) : 0;
                   
                   // 日志：检查关键字段
                   if (Math.random() < 0.1) { // 只打印10%的行，避免刷屏
                   }
-
-                  // 确保 user_id 不为空
-                  const userId = user.value?.id || '00000000-0000-0000-0000-000000000000';
 
                   return {
                     sheet_name: sheetName,
                     entry_date: entryDate,
                     cycle: normalizedRow['周期'] || '',
                     batch_no: normalizedRow['批号'] || '',
-                    material_code: normalizedRow['物料代码'] || '',
                     spec: normalizedRow['规格'] || '',
                     size: normalizedRow['尺寸'] || '',
                     foil_voltage: normalizedRow['正箔电压'] || '',
-                    design_qty: design_qty,
+                    aging_total: aging_total,
                     winding_qty: Number(normalizedRow['卷绕数']) || 0,
-                    good_qty: good_qty,
+                    aging_defect_qty: aging_defect_qty,
                     defect_short: defect_short,
                     defect_blast: defect_blast,
                     defect_bulge: defect_bulge,
@@ -2027,9 +1965,7 @@
                     defect_low_cap: defect_low_cap,
                     defect_df: defect_df,
                     actual_total: actual_total,
-                    loss_rate: loss_rate,
                     first_pass_defect_rate: first_pass_defect_rate,
-                    first_pass_rate: first_pass_rate,
                     operator: normalizedRow['作业员'] || '',
                     defect_type: normalizedRow['不良类型'] || '',
                     notes: normalizedRow['备注'] || '',
@@ -2090,17 +2026,14 @@
                 '日期': r.entry_date,
                 '周期': r.cycle,
                 '批号': r.batch_no,
-                '物料代码': r.material_code,
                 '规格': r.spec,
                 '尺寸': r.size,
                 '正箔电压': r.foil_voltage,
-                '设计数量': r.design_qty,
+                '老化总数': r.aging_total,
                 '实际此单总数': r.actual_total,
                 '卷绕数': r.winding_qty,
-                '良品数': r.good_qty,
-                '损耗(%)': r.loss_rate,
+                '老化不良数': r.aging_defect_qty,
                 '一次底凸短路爆破率(%)': r.first_pass_defect_rate,
-                '一次直通率(%)': r.first_pass_rate,
                 '短路': r.defect_short,
                 '爆破': r.defect_blast,
                 '底凸': r.defect_bulge,
@@ -2138,17 +2071,14 @@
               '日期': r.entry_date,
               '周期': r.cycle,
               '批号': r.batch_no,
-              '物料代码': r.material_code,
               '规格': r.spec,
               '尺寸': r.size,
               '正箔电压': r.foil_voltage,
-              '设计数量': r.design_qty,
+              '老化总数': r.aging_total,
               '实际此单总数': r.actual_total,
               '卷绕数': r.winding_qty,
-              '良品数': r.good_qty,
-              '损耗(%)': r.loss_rate,
+              '老化不良数': r.aging_defect_qty,
               '一次底凸短路爆破率(%)': r.first_pass_defect_rate,
-              '一次直通率(%)': r.first_pass_rate,
               '短路': r.defect_short,
               '爆破': r.defect_blast,
               '底凸': r.defect_bulge,
@@ -2206,7 +2136,7 @@
             const trendData = last7Days.map(date => {
               return records.value
                 .filter(r => r.entry_date === date)
-                .reduce((s, r) => s + (r.good_qty || 0), 0);
+                .reduce((s, r) => s + (r.aging_defect_qty || 0), 0);
             });
 
             window.trendChartInstance = new Chart(trendCtx, {
@@ -2242,7 +2172,7 @@
             ];
             const yieldData = yieldRanges.map(range => {
               return records.value.filter(r => {
-                const rate = r.actual_qty > 0 ? (r.good_qty / r.actual_qty * 100) : 0;
+                const rate = r.actual_total > 0 ? ((r.actual_total - r.aging_defect_qty) / r.actual_total * 100) : 0;
                 return rate >= range.min && rate < range.max;
               }).length;
             });
@@ -2268,7 +2198,7 @@
           if (defectCtx) {
             if (window.defectChartInstance) window.defectChartInstance.destroy();
             const totalDefect = records.value.reduce((s, r) =>
-              s + ((r.actual_qty || 0) - (r.good_qty || 0)), 0
+              s + (r.aging_defect_qty || 0)
             );
 
             window.defectChartInstance = new Chart(defectCtx, {
