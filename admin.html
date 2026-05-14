@@ -1058,12 +1058,24 @@
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="批号">
-              <el-input v-model="form.batch_no" placeholder="请输入批号" />
+              <el-autocomplete
+                v-model="form.batch_no"
+                :fetch-suggestions="(qs, cb) => querySearch(qs, cb, uniqueBatchNos.value)"
+                placeholder="请输入批号"
+                clearable
+                style="width: 100%;"
+              />
             </el-form-item>
           </el-col>
           <el-col :span="12">
             <el-form-item label="客户">
-              <el-input v-model="form.customer" placeholder="请输入客户名称" />
+              <el-autocomplete
+                v-model="form.customer"
+                :fetch-suggestions="(qs, cb) => querySearch(qs, cb, uniqueCustomers.value)"
+                placeholder="请输入客户名称"
+                clearable
+                style="width: 100%;"
+              />
             </el-form-item>
           </el-col>
         </el-row>
@@ -1071,12 +1083,24 @@
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="规格">
-              <el-input v-model="form.spec" placeholder="请输入规格" />
+              <el-autocomplete
+                v-model="form.spec"
+                :fetch-suggestions="(qs, cb) => querySearch(qs, cb, uniqueSpecs.value)"
+                placeholder="请输入规格"
+                clearable
+                style="width: 100%;"
+              />
             </el-form-item>
           </el-col>
           <el-col :span="12">
             <el-form-item label="尺寸">
-              <el-input v-model="form.size" placeholder="请输入尺寸" />
+              <el-autocomplete
+                v-model="form.size"
+                :fetch-suggestions="(qs, cb) => querySearch(qs, cb, uniqueSizes.value)"
+                placeholder="请输入尺寸"
+                clearable
+                style="width: 100%;"
+              />
             </el-form-item>
           </el-col>
         </el-row>
@@ -1084,7 +1108,13 @@
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="正箔电压">
-              <el-input v-model="form.foil_voltage" placeholder="请输入正箔电压" />
+              <el-autocomplete
+                v-model="form.foil_voltage"
+                :fetch-suggestions="(qs, cb) => querySearch(qs, cb, uniqueFoilVoltages.value)"
+                placeholder="请输入正箔电压"
+                clearable
+                style="width: 100%;"
+              />
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -1180,12 +1210,24 @@
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="作业员">
-              <el-input v-model="form.operator" placeholder="请输入作业员姓名" />
+              <el-autocomplete
+                v-model="form.operator"
+                :fetch-suggestions="(qs, cb) => querySearch(qs, cb, uniqueOperators.value)"
+                placeholder="请输入作业员姓名"
+                clearable
+                style="width: 100%;"
+              />
             </el-form-item>
           </el-col>
           <el-col :span="12">
             <el-form-item label="不良类型">
-              <el-input v-model="form.defect_type" placeholder="请输入不良类型" />
+              <el-autocomplete
+                v-model="form.defect_type"
+                :fetch-suggestions="(qs, cb) => querySearch(qs, cb, uniqueDefectTypes.value)"
+                placeholder="请输入不良类型"
+                clearable
+                style="width: 100%;"
+              />
             </el-form-item>
           </el-col>
         </el-row>
@@ -1333,6 +1375,51 @@
           defect_type: '',
           notes: '',
         });
+
+        // ===== 自动补全数据源 =====
+        const uniqueCustomers = computed(() => {
+          const set = new Set();
+          records.value.forEach(r => { if (r.customer) set.add(r.customer); });
+          return Array.from(set).sort();
+        });
+        const uniqueBatchNos = computed(() => {
+          const set = new Set();
+          records.value.forEach(r => { if (r.batch_no) set.add(r.batch_no); });
+          return Array.from(set).sort();
+        });
+        const uniqueSpecs = computed(() => {
+          const set = new Set();
+          records.value.forEach(r => { if (r.spec) set.add(r.spec); });
+          return Array.from(set).sort();
+        });
+        const uniqueSizes = computed(() => {
+          const set = new Set();
+          records.value.forEach(r => { if (r.size) set.add(r.size); });
+          return Array.from(set).sort();
+        });
+        const uniqueFoilVoltages = computed(() => {
+          const set = new Set();
+          records.value.forEach(r => { if (r.foil_voltage) set.add(r.foil_voltage); });
+          return Array.from(set).sort();
+        });
+        const uniqueOperators = computed(() => {
+          const set = new Set();
+          records.value.forEach(r => { if (r.operator) set.add(r.operator); });
+          return Array.from(set).sort();
+        });
+        const uniqueDefectTypes = computed(() => {
+          const set = new Set();
+          records.value.forEach(r => { if (r.defect_type) set.add(r.defect_type); });
+          return Array.from(set).sort();
+        });
+
+        // 通用模糊搜索函数
+        const querySearch = (queryString, cb, dataList) => {
+          const results = queryString
+            ? dataList.filter(item => item.toLowerCase().includes(queryString.toLowerCase()))
+            : dataList;
+          cb(results.map(item => ({ value: item })));
+        };
 
         // ===== 计算属性 =====
         const calculatedFields = computed(() => {
