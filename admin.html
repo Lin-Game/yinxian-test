@@ -742,6 +742,9 @@
                 <el-form-item label="批号">
                   <el-input v-model="filterForm.batchNo" placeholder="请输入批号（模糊匹配）" clearable />
                 </el-form-item>
+                <el-form-item label="客户">
+                  <el-input v-model="filterForm.customer" placeholder="请输入客户（模糊匹配）" clearable />
+                </el-form-item>
                 <el-form-item label="规格">
                   <el-input v-model="filterForm.spec" placeholder="请输入规格（模糊匹配）" clearable />
                 </el-form-item>
@@ -803,6 +806,7 @@
                       <th>日期</th>
                       <th>周期</th>
                       <th>批号</th>
+                      <th>客户</th>
                       <th>规格</th>
                       <th>尺寸</th>
                       <th>正箔电压</th>
@@ -810,7 +814,7 @@
                       <th>卷绕数</th>
                       <th>老化不良数</th>
                       <th>老化良率(%)</th>
-                      <th>一次底凸短路爆破率(%)</th>
+                      <th>爆破率(%)</th>
                       <th>短路</th>
                       <th>爆破</th>
                       <th>底凸</th>
@@ -831,6 +835,7 @@
                       <td>{{ row.entry_date }}</td>
                       <td>{{ row.cycle }}</td>
                       <td>{{ row.batch_no }}</td>
+                      <td>{{ row.customer }}</td>
                       <td>{{ row.spec }}</td>
                       <td>{{ row.size }}</td>
                       <td>{{ row.foil_voltage }}</td>
@@ -838,7 +843,7 @@
                       <td>{{ row.winding_qty }}</td>
                       <td>{{ row.aging_defect_qty }}</td>
                       <td>{{ row.aging_total > 0 ? (((row.aging_total - row.aging_defect_qty) / row.aging_total) * 100).toFixed(2) : 0 }}%</td>
-                      <td>{{ (row.first_pass_defect_rate || 0).toFixed(2) }}%</td>
+                      <td>{{ row.aging_total > 0 ? ((row.defect_blast / row.aging_total) * 100).toFixed(2) : 0 }}%</td>
                       <td>{{ row.defect_short }}</td>
                       <td>{{ row.defect_blast }}</td>
                       <td>{{ row.defect_bulge }}</td>
@@ -1051,9 +1056,14 @@
         </el-row>
 
         <el-row :gutter="20">
-          <el-col :span="24">
+          <el-col :span="12">
             <el-form-item label="批号">
               <el-input v-model="form.batch_no" placeholder="请输入批号" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="客户">
+              <el-input v-model="form.customer" placeholder="请输入客户名称" />
             </el-form-item>
           </el-col>
         </el-row>
@@ -1152,13 +1162,17 @@
         
         <el-row :gutter="20">
           <el-col :span="12">
-            <el-form-item label="底凸短路爆破率(%)">
-              <el-input :value="calculatedFields.first_pass_defect_rate" disabled style="width: 100%;" />
+            <el-form-item label="爆破率(%)">
+              <el-tooltip content="计算公式：爆破数 / 老化总数 × 100%" placement="top" :enterable="false">
+                <el-input :value="calculatedFields.blast_rate" disabled style="width: 100%;" />
+              </el-tooltip>
             </el-form-item>
           </el-col>
           <el-col :span="12">
             <el-form-item label="老化良率(%)">
-              <el-input :value="calculatedFields.aging_yield" disabled style="width: 100%;" />
+              <el-tooltip content="计算公式：(老化总数 - 老化不良数) / 老化总数 × 100%" placement="top" :enterable="false">
+                <el-input :value="calculatedFields.aging_yield" disabled style="width: 100%;" />
+              </el-tooltip>
             </el-form-item>
           </el-col>
         </el-row>
@@ -1300,6 +1314,7 @@
           entry_date: new Date().toISOString().slice(0, 10),
           cycle: '',
           batch_no: '',
+          customer: '',
           spec: '',
           size: '',
           foil_voltage: '',
@@ -1326,14 +1341,14 @@
                             f.defect_bulge + f.defect_appearance + f.defect_leakage +
                             f.defect_high_cap + f.defect_low_cap + f.defect_df;
 
-          const first_pass_defect_rate = actual_total > 0 ?
-            ((f.defect_short + f.defect_blast + f.defect_bulge) / actual_total * 100) : 0;
+          const blast_rate = f.aging_total > 0 ?
+            (f.defect_blast / f.aging_total * 100) : 0;
 
           const aging_yield = f.aging_total > 0 ?
             ((f.aging_total - f.aging_defect_qty) / f.aging_total * 100) : 0;
 
           return {
-            first_pass_defect_rate: first_pass_defect_rate.toFixed(2),
+            blast_rate: blast_rate.toFixed(2),
             aging_yield: aging_yield.toFixed(2),
           };
         });
@@ -1344,6 +1359,7 @@
           dateRange: [],
           cycle: '',
           batchNo: '',
+          customer: '',
           spec: '',
           size: '',
           foilVoltage: '',
@@ -1355,6 +1371,7 @@
           dateRange: [],
           cycle: '',
           batchNo: '',
+          customer: '',
           spec: '',
           size: '',
           foilVoltage: '',
@@ -1364,13 +1381,14 @@
         });
         const hasActiveFilter = computed(() => {
           const f = activeFilter.value;
-          return !!(f.dateRange && f.dateRange.length === 2) || f.cycle || f.batchNo || f.spec || f.size || f.foilVoltage || f.operator || f.defectType || f.notes;
+          return !!(f.dateRange && f.dateRange.length === 2) || f.cycle || f.batchNo || f.customer || f.spec || f.size || f.foilVoltage || f.operator || f.defectType || f.notes;
         });
         const openFilterDialog = () => {
           filterForm.value = {
             dateRange: activeFilter.value.dateRange ? [...activeFilter.value.dateRange] : [],
             cycle: activeFilter.value.cycle,
             batchNo: activeFilter.value.batchNo,
+            customer: activeFilter.value.customer,
             spec: activeFilter.value.spec,
             size: activeFilter.value.size,
             foilVoltage: activeFilter.value.foilVoltage,
@@ -1385,11 +1403,11 @@
           showFilterDialog.value = false;
         };
         const clearFilter = () => {
-          activeFilter.value = { dateRange: [], cycle: '', batchNo: '', spec: '', size: '', foilVoltage: '', operator: '', defectType: '', notes: '' };
+          activeFilter.value = { dateRange: [], cycle: '', batchNo: '', customer: '', spec: '', size: '', foilVoltage: '', operator: '', defectType: '', notes: '' };
           dateRange.value = [];
         };
         const filterFormReset = () => {
-          filterForm.value = { dateRange: [], cycle: '', batchNo: '', spec: '', size: '', foilVoltage: '', operator: '', defectType: '', notes: '' };
+          filterForm.value = { dateRange: [], cycle: '', batchNo: '', customer: '', spec: '', size: '', foilVoltage: '', operator: '', defectType: '', notes: '' };
         };
 
         const filteredData = computed(() => {
@@ -1436,6 +1454,10 @@
             if (af.foilVoltage) {
               const s = af.foilVoltage.toLowerCase();
               data = data.filter(r => r.foil_voltage && r.foil_voltage.toLowerCase().includes(s));
+            }
+            if (af.customer) {
+              const s = af.customer.toLowerCase();
+              data = data.filter(r => r.customer && r.customer.toLowerCase().includes(s));
             }
             if (af.operator) {
               const s = af.operator.toLowerCase();
@@ -1786,7 +1808,7 @@
             const calc = calculatedFields.value;
             const recordData = {
               ...form.value,
-              first_pass_defect_rate: parseFloat(calc.first_pass_defect_rate),
+              blast_rate: parseFloat(calc.blast_rate),
             };
 
             if (isEditing.value) {
@@ -1945,8 +1967,8 @@
                   
                   const aging_total = Number(normalizedRow['设计数量']) || 0;
                   
-                  const first_pass_defect_rate = actual_total > 0 ? 
-                    ((defect_short + defect_blast + defect_bulge) / actual_total * 100) : 0;
+                  const blast_rate = aging_total > 0 ? 
+                    (defect_blast / aging_total * 100) : 0;
                   
                   // 日志：检查关键字段
                   if (Math.random() < 0.1) { // 只打印10%的行，避免刷屏
@@ -1957,6 +1979,7 @@
                     entry_date: entryDate,
                     cycle: normalizedRow['周期'] || '',
                     batch_no: normalizedRow['批号'] || '',
+                    customer: normalizedRow['客户'] || '',
                     spec: normalizedRow['规格'] || '',
                     size: normalizedRow['尺寸'] || '',
                     foil_voltage: normalizedRow['正箔电压'] || '',
@@ -1971,7 +1994,7 @@
                     defect_high_cap: defect_high_cap,
                     defect_low_cap: defect_low_cap,
                     defect_df: defect_df,
-                    first_pass_defect_rate: first_pass_defect_rate,
+                    blast_rate: blast_rate,
                     operator: normalizedRow['作业员'] || '',
                     defect_type: normalizedRow['不良类型'] || '',
                     notes: normalizedRow['备注'] || '',
@@ -2032,13 +2055,14 @@
                 '日期': r.entry_date,
                 '周期': r.cycle,
                 '批号': r.batch_no,
+                '客户': r.customer || '',
                 '规格': r.spec,
                 '尺寸': r.size,
                 '正箔电压': r.foil_voltage,
                 '老化总数': r.aging_total,
                 '卷绕数': r.winding_qty,
                 '老化不良数': r.aging_defect_qty,
-                '一次底凸短路爆破率(%)': r.first_pass_defect_rate,
+                '爆破率(%)': r.blast_rate,
                 '短路': r.defect_short,
                 '爆破': r.defect_blast,
                 '底凸': r.defect_bulge,
@@ -2076,13 +2100,14 @@
               '日期': r.entry_date,
               '周期': r.cycle,
               '批号': r.batch_no,
+              '客户': r.customer || '',
               '规格': r.spec,
               '尺寸': r.size,
               '正箔电压': r.foil_voltage,
                 '老化总数': r.aging_total,
                 '卷绕数': r.winding_qty,
               '老化不良数': r.aging_defect_qty,
-              '一次底凸短路爆破率(%)': r.first_pass_defect_rate,
+              '爆破率(%)': r.blast_rate,
               '短路': r.defect_short,
               '爆破': r.defect_blast,
               '底凸': r.defect_bulge,
