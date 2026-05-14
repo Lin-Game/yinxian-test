@@ -1060,7 +1060,7 @@
             <el-form-item label="批号">
               <el-autocomplete
                 v-model="form.batch_no"
-                :fetch-suggestions="(qs, cb) => querySearch(qs, cb, uniqueBatchNos.value)"
+                :fetch-suggestions="(qs, cb) => querySearch(qs, cb, uniqueBatchNos)"
                 placeholder="请输入批号"
                 clearable
                 style="width: 100%;"
@@ -1071,7 +1071,7 @@
             <el-form-item label="客户">
               <el-autocomplete
                 v-model="form.customer"
-                :fetch-suggestions="(qs, cb) => querySearch(qs, cb, uniqueCustomers.value)"
+                :fetch-suggestions="(qs, cb) => querySearch(qs, cb, uniqueCustomers)"
                 placeholder="请输入客户名称"
                 clearable
                 style="width: 100%;"
@@ -1085,7 +1085,7 @@
             <el-form-item label="规格">
               <el-autocomplete
                 v-model="form.spec"
-                :fetch-suggestions="(qs, cb) => querySearch(qs, cb, uniqueSpecs.value)"
+                :fetch-suggestions="(qs, cb) => querySearch(qs, cb, uniqueSpecs)"
                 placeholder="请输入规格"
                 clearable
                 style="width: 100%;"
@@ -1096,7 +1096,7 @@
             <el-form-item label="尺寸">
               <el-autocomplete
                 v-model="form.size"
-                :fetch-suggestions="(qs, cb) => querySearch(qs, cb, uniqueSizes.value)"
+                :fetch-suggestions="(qs, cb) => querySearch(qs, cb, uniqueSizes)"
                 placeholder="请输入尺寸"
                 clearable
                 style="width: 100%;"
@@ -1110,7 +1110,7 @@
             <el-form-item label="正箔电压">
               <el-autocomplete
                 v-model="form.foil_voltage"
-                :fetch-suggestions="(qs, cb) => querySearch(qs, cb, uniqueFoilVoltages.value)"
+                :fetch-suggestions="(qs, cb) => querySearch(qs, cb, uniqueFoilVoltages)"
                 placeholder="请输入正箔电压"
                 clearable
                 style="width: 100%;"
@@ -1212,7 +1212,7 @@
             <el-form-item label="作业员">
               <el-autocomplete
                 v-model="form.operator"
-                :fetch-suggestions="(qs, cb) => querySearch(qs, cb, uniqueOperators.value)"
+                :fetch-suggestions="(qs, cb) => querySearch(qs, cb, uniqueOperators)"
                 placeholder="请输入作业员姓名"
                 clearable
                 style="width: 100%;"
@@ -1223,7 +1223,7 @@
             <el-form-item label="不良类型">
               <el-autocomplete
                 v-model="form.defect_type"
-                :fetch-suggestions="(qs, cb) => querySearch(qs, cb, uniqueDefectTypes.value)"
+                :fetch-suggestions="(qs, cb) => querySearch(qs, cb, uniqueDefectTypes)"
                 placeholder="请输入不良类型"
                 clearable
                 style="width: 100%;"
