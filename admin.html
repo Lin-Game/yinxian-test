@@ -1379,44 +1379,62 @@
         // ===== 自动补全数据源 =====
         const uniqueCustomers = computed(() => {
           const set = new Set();
-          records.value.forEach(r => { if (r.customer) set.add(r.customer); });
+          records.value.forEach(r => {
+            if (r.customer) set.add(r.customer);
+          });
           return Array.from(set).sort();
         });
         const uniqueBatchNos = computed(() => {
           const set = new Set();
-          records.value.forEach(r => { if (r.batch_no) set.add(r.batch_no); });
+          records.value.forEach(r => {
+            if (r.batch_no) set.add(r.batch_no);
+          });
           return Array.from(set).sort();
         });
         const uniqueSpecs = computed(() => {
           const set = new Set();
-          records.value.forEach(r => { if (r.spec) set.add(r.spec); });
+          records.value.forEach(r => {
+            if (r.spec) set.add(r.spec);
+          });
           return Array.from(set).sort();
         });
         const uniqueSizes = computed(() => {
           const set = new Set();
-          records.value.forEach(r => { if (r.size) set.add(r.size); });
+          records.value.forEach(r => {
+            if (r.size) set.add(r.size);
+          });
           return Array.from(set).sort();
         });
         const uniqueFoilVoltages = computed(() => {
           const set = new Set();
-          records.value.forEach(r => { if (r.foil_voltage) set.add(r.foil_voltage); });
+          records.value.forEach(r => {
+            if (r.foil_voltage) set.add(r.foil_voltage);
+          });
           return Array.from(set).sort();
         });
         const uniqueOperators = computed(() => {
           const set = new Set();
-          records.value.forEach(r => { if (r.operator) set.add(r.operator); });
+          records.value.forEach(r => {
+            if (r.operator) set.add(r.operator);
+          });
           return Array.from(set).sort();
         });
         const uniqueDefectTypes = computed(() => {
           const set = new Set();
-          records.value.forEach(r => { if (r.defect_type) set.add(r.defect_type); });
+          records.value.forEach(r => {
+            if (r.defect_type) set.add(r.defect_type);
+          });
           return Array.from(set).sort();
         });
 
         // 通用模糊搜索函数
         const querySearch = (queryString, cb, dataList) => {
+          if (!dataList || !Array.isArray(dataList)) {
+            cb([]);
+            return;
+          }
           const results = queryString
-            ? dataList.filter(item => item.toLowerCase().includes(queryString.toLowerCase()))
+            ? dataList.filter(item => item && item.toLowerCase().includes(queryString.toLowerCase()))
             : dataList;
           cb(results.map(item => ({ value: item })));
         };
